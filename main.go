@@ -16,6 +16,7 @@ type ConfigStruct struct {
 	FeedUrl  string `yaml:"feed_url" cfg:"feed_url"`
 	TempDir  string `yaml:"tmp_dir" cfg:"tmp_dir"`
 	ShowsDir string `yaml:"shows_dir" cfg:"shows_dir"`
+	Debug    bool   `yaml:"debug" cfg:"debug" cfgDefault:"false"`
 }
 
 var Config = ConfigStruct{}

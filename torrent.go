@@ -62,15 +62,17 @@ func runTorrent(client *torrent.Client, torrentFile string) []*torrent.File {
 		return t
 	}()
 
-	go func() {
-		for {
-			select {
-			case <-t.GotInfo():
-				fmt.Println(fmt.Sprintf("downloading (%s/%s)", humanize.Bytes(uint64(t.BytesCompleted())), humanize.Bytes(uint64(t.Info().TotalLength()))))
+	if Config.Debug {
+		go func() {
+			for {
+				select {
+				case <-t.GotInfo():
+					fmt.Println(fmt.Sprintf("downloading (%s/%s)", humanize.Bytes(uint64(t.BytesCompleted())), humanize.Bytes(uint64(t.Info().TotalLength()))))
+				}
+				time.Sleep(time.Second * 1)
 			}
-			time.Sleep(time.Second * 1)
-		}
-	}()
+		}()
+	}
 
 	go func() {
 		<-t.GotInfo()
