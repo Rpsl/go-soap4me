@@ -2,18 +2,18 @@ package main
 
 import (
 	"fmt"
+	"github.com/anacrolix/missinggo/filecache"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
+	"github.com/anacrolix/torrent/storage"
 	"github.com/dustin/go-humanize"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
-	"time"
-	"io/ioutil"
 	"runtime"
 	"sync"
-	"github.com/anacrolix/torrent/storage"
-	"github.com/anacrolix/missinggo/filecache"
+	"time"
 )
 
 func DownloadEpisodes(episodes []Episode) {
@@ -40,7 +40,7 @@ func DownloadEpisodes(episodes []Episode) {
 	}
 }
 
-func doEpisode(episode Episode, wg *sync.WaitGroup)  {
+func doEpisode(episode Episode, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	fileCache, err := filecache.NewCache(Config.TempDir)
@@ -50,13 +50,12 @@ func doEpisode(episode Episode, wg *sync.WaitGroup)  {
 	fileCache.SetCapacity(10 << 30)
 	storageProvider := fileCache.AsResourceProvider()
 
-
 	clientConfig := torrent.Config{
 		DataDir:  Config.TempDir,
 		NoUpload: true,
 		Seed:     false,
-		NoDefaultPortForwarding:true,
-		DefaultStorage: storage.NewResourcePieces(storageProvider),
+		NoDefaultPortForwarding: true,
+		DefaultStorage:          storage.NewResourcePieces(storageProvider),
 	}
 
 	client, err := torrent.NewClient(&clientConfig)
@@ -123,7 +122,6 @@ func runTorrent(client *torrent.Client, torrentFile string) []*torrent.File {
 
 	return t.Files()
 }
-
 
 func downloadTorrentFile(episode Episode) string {
 	content := doRequest(episode.torrent)

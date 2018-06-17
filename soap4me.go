@@ -30,6 +30,11 @@ func doRequest(url string) string {
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Add("User-Agent", UserAgent)
 	response, err := client.Do(req)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	defer response.Body.Close()
 
 	if err != nil {
