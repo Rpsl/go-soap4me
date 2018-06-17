@@ -2,15 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/crgimenes/goconfig"
-	_ "github.com/crgimenes/goconfig/yaml"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
-)
 
-const USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"
+	"github.com/crgimenes/goconfig"
+	_ "github.com/crgimenes/goconfig/yaml"
+)
 
 type ConfigStruct struct {
 	FeedUrl  string `yaml:"feed_url" cfg:"feed_url"`
@@ -26,25 +24,28 @@ func init() {
 	err := goconfig.Parse(&Config)
 
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 		return
 	}
+
+	Config.TempDir, _ = filepath.Abs(Config.TempDir)
+	Config.ShowsDir, _ = filepath.Abs(Config.ShowsDir)
+
+	log.Println("Temporary dir is:", Config.TempDir)
+	log.Println("Shows dir is:", Config.ShowsDir)
 
 	createDir(Config.TempDir)
 	createDir(Config.ShowsDir)
 }
 
+// по хорошему это можно завернуть в loop и пусть демон всегда живет
+// но надо ли?
 func main() {
 	CleanUp()
 
-	if offline() {
-		fmt.Println("No network connection. Cannot get RSS feed")
-		return
-	}
-
 	episodes := ParseFeed(Config.FeedUrl)
 
-	download(episodes)
+	DownloadEpisodes(episodes)
 
 }
 
@@ -55,14 +56,15 @@ func MoveFile(fromPath string, toPath string) {
 	}
 	err = os.Rename(fromPath, toPath)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 }
 
+// Удаление старых временных файлов, если они есть
 func CleanUp() {
 	files, err := filepath.Glob(filepath.Join(os.TempDir(), "soap4me*"))
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	for _, f := range files {
 		err = os.Remove(f)
@@ -72,19 +74,12 @@ func CleanUp() {
 	}
 }
 
-func offline() bool {
-	//Chances are if Google's down, the internet is down.
-	_, err := http.Get("https://google.com/")
-
-	return err != nil
-}
-
 func createDir(path string) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		err = os.MkdirAll(path, os.ModePerm)
 
 		if err != nil {
-			log.Panicf("Can't create dir %s %s", path, err)
+			log.Fatalf("Can't create dir %s %s", path, err)
 		}
 	}
 }

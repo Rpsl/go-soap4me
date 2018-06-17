@@ -6,9 +6,11 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"regexp"
+	"time"
 )
+
+const UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"
 
 type Episode struct {
 	show    string
@@ -16,28 +18,70 @@ type Episode struct {
 	season  string
 	episode string
 	torrent string
+	path    string
 }
 
-func downloadTorrentFile(episode Episode) string {
-	content := soapDownload(episode.torrent)
-	tempFile, err := ioutil.TempFile(os.TempDir(), "soap4me")
+// отдельный метод, т.к. необходимо устанавливать user-agent на каждый запрос,
+// в противном случае soap4me будет возвращать 403 ошибку
+func doRequest(url string) string {
+	client := &http.Client{
+		Timeout: time.Second * 10,
+	}
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Add("User-Agent", UserAgent)
+	response, err := client.Do(req)
+	defer response.Body.Close()
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if _, err := tempFile.Write([]byte(content)); err != nil {
-		log.Fatal(err)
-	}
-
-	if err := tempFile.Close(); err != nil {
-		log.Fatal(err)
-	}
-
-	return tempFile.Name()
+	contents, _ := ioutil.ReadAll(response.Body)
+	return string(contents)
 }
 
-func getEpisodePath(episode Episode) string {
+func ParseFeed(feedUrl string) []Episode {
+	feedData := doRequest(feedUrl)
+
+	fp := gofeed.NewParser()
+	feed, err := fp.ParseString(feedData)
+
+	if err != nil {
+		log.Fatal("unable to parse feed", err)
+	}
+
+	return parseItems(feed)
+}
+
+func parseItems(items *gofeed.Feed) []Episode {
+	var episodes []Episode
+
+	r, _ := regexp.Compile(`(.*?) / сезон ([0-9]+) эпизод ([0-9]+) / (.*?) / (.*)`)
+
+	for _, item := range items.Items {
+		match := r.FindStringSubmatch(item.Title)
+
+		if match == nil {
+			continue
+		}
+
+		ep := Episode{
+			show:    match[1],
+			title:   match[4],
+			season:  match[2],
+			episode: match[3],
+			torrent: item.GUID,
+		}
+		ep.path = GetEpisodePath(ep)
+
+		episodes = append(episodes, ep)
+	}
+
+	return episodes
+}
+
+// todo escape file names
+func GetEpisodePath(episode Episode) string {
 	return fmt.Sprintf(
 		"%s/%s/Season %s/s%se%s %s.mp4",
 		Config.ShowsDir,
@@ -47,54 +91,4 @@ func getEpisodePath(episode Episode) string {
 		episode.episode,
 		episode.title,
 	)
-}
-
-func soapDownload(url string) string {
-	client := &http.Client{}
-
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Add("User-Agent", USER_AGENT)
-
-	resp, _ := client.Do(req)
-
-	defer resp.Body.Close()
-
-	contents, _ := ioutil.ReadAll(resp.Body)
-
-	return string(contents)
-}
-
-func ParseFeed(feedUrl string) []Episode {
-	feedData := soapDownload(feedUrl)
-
-	fp := gofeed.NewParser()
-	feed, err := fp.ParseString(feedData)
-
-	if err != nil {
-		log.Panic("unable to parse feed", err)
-	}
-
-	return parseItems(feed)
-}
-
-func parseItems(items *gofeed.Feed) []Episode {
-	r, _ := regexp.Compile(`(.*?) / сезон ([0-9]+) эпизод ([0-9]+) / (.*?) / (.*)`)
-
-	episodes := []Episode{}
-
-	for _, item := range items.Items {
-		found := r.FindStringSubmatch(item.Title)
-
-		tmp := Episode{
-			show:    found[1],
-			title:   found[4],
-			season:  found[2],
-			episode: found[3],
-			torrent: item.GUID,
-		}
-
-		episodes = append(episodes, tmp)
-	}
-
-	return episodes
 }
