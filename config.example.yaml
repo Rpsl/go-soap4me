@@ -1,3 +1,8 @@
 feed_url:
 tmp_dir:
 shows_dir:
+
+#больше 3 ставить нет смысла
+threads: 1
+
+debug: false

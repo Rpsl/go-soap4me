@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -15,6 +14,7 @@ type ConfigStruct struct {
 	TempDir  string `yaml:"tmp_dir" cfg:"tmp_dir"`
 	ShowsDir string `yaml:"shows_dir" cfg:"shows_dir"`
 	Debug    bool   `yaml:"debug" cfg:"debug" cfgDefault:"false"`
+	Threads  int    `yaml:"threads" cfg:"threads" cfgDefault:"1"`
 }
 
 var Config = ConfigStruct{}
@@ -41,37 +41,10 @@ func init() {
 // по хорошему это можно завернуть в loop и пусть демон всегда живет
 // но надо ли?
 func main() {
-	CleanUp()
-
 	episodes := ParseFeed(Config.FeedUrl)
 
 	DownloadEpisodes(episodes)
 
-}
-
-func MoveFile(fromPath string, toPath string) {
-	err := os.MkdirAll(filepath.Dir(toPath), os.ModePerm)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = os.Rename(fromPath, toPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-// Удаление старых временных файлов, если они есть
-func CleanUp() {
-	files, err := filepath.Glob(filepath.Join(os.TempDir(), "soap4me*"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	for _, f := range files {
-		err = os.Remove(f)
-		if err != nil {
-			log.Println(fmt.Printf("Can't remove old torrent file :: %s", f))
-		}
-	}
 }
 
 func createDir(path string) {

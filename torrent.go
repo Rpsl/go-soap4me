@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/anacrolix/missinggo/filecache"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
 	"github.com/anacrolix/torrent/storage"
@@ -16,26 +15,28 @@ import (
 	"time"
 )
 
+// todo
+// В перспективе можно вынести в интерфейс и сделать разные backend для скачивания
+// aria2c, api для transmission. Можно даже из .torrent файла грепать ссылку на http сида и так скачивать
 func DownloadEpisodes(episodes []Episode) {
-	runtime.GOMAXPROCS(2)
+	cleanUp()
+	runtime.GOMAXPROCS(Config.Threads)
 
 	var wg sync.WaitGroup
 
-	// todo нужно перенести в конфиг
-	wg.Add(2)
+	wg.Add(Config.Threads)
 	var threads = 0
 
 	// тут можно качать до трех файла одновременно
-	// а кол-во загрузок вынести в конфиг
 	for _, episode := range episodes {
 		if _, err := os.Stat(episode.path); os.IsNotExist(err) {
 			threads++
 			go doEpisode(episode, &wg)
 		}
 
-		// todo кол-во тредов нужно уменьшать
-		if threads == 2 {
+		if threads == Config.Threads {
 			wg.Wait()
+			threads = 0
 		}
 	}
 }
@@ -43,19 +44,16 @@ func DownloadEpisodes(episodes []Episode) {
 func doEpisode(episode Episode, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	fileCache, err := filecache.NewCache(Config.TempDir)
-	if err != nil {
-		return
-	}
-	fileCache.SetCapacity(10 << 30)
-	storageProvider := fileCache.AsResourceProvider()
+	storageProvider := storage.NewMapPieceCompletion()
+
+	defer storageProvider.Close()
 
 	clientConfig := torrent.Config{
 		DataDir:  Config.TempDir,
 		NoUpload: true,
 		Seed:     false,
 		NoDefaultPortForwarding: true,
-		DefaultStorage:          storage.NewResourcePieces(storageProvider),
+		DefaultStorage:          storage.NewMMapWithCompletion(Config.TempDir, storageProvider),
 	}
 
 	client, err := torrent.NewClient(&clientConfig)
@@ -68,21 +66,22 @@ func doEpisode(episode Episode, wg *sync.WaitGroup) {
 
 	log.Printf("Start downloading: %s - %s", episode.show, episode.title)
 
-	files := runTorrent(client, downloadTorrentFile(episode))
+	tor := runTorrent(client, downloadTorrentFile(episode))
 
-	if len(files) > 1 {
+	if len(tor.Files()) > 1 {
 		client.Close()
 		log.Fatal("Our torrent have more than one file")
 		return
 	}
 
 	if client.WaitAll() {
-		MoveFile(filepath.Join(Config.TempDir, files[0].Path()), episode.path)
+		moveFile(filepath.Join(Config.TempDir, tor.Files()[0].Path()), episode.path)
+		tor.Drop()
 		client.Close()
 	}
 }
 
-func runTorrent(client *torrent.Client, torrentFile string) []*torrent.File {
+func runTorrent(client *torrent.Client, torrentFile string) *torrent.Torrent {
 	t := func() *torrent.Torrent {
 		metaInfo, err := metainfo.LoadFromFile(torrentFile)
 
@@ -103,6 +102,9 @@ func runTorrent(client *torrent.Client, torrentFile string) []*torrent.File {
 			for {
 				select {
 				case <-t.GotInfo():
+					if t.BytesCompleted() == t.Info().TotalLength() {
+						continue
+					}
 					fmt.Printf(
 						"%s: %s/%s\n",
 						t.Files()[0].DisplayPath(),
@@ -120,7 +122,7 @@ func runTorrent(client *torrent.Client, torrentFile string) []*torrent.File {
 		t.DownloadAll()
 	}()
 
-	return t.Files()
+	return t
 }
 
 func downloadTorrentFile(episode Episode) string {
@@ -140,4 +142,29 @@ func downloadTorrentFile(episode Episode) string {
 	}
 
 	return tempFile.Name()
+}
+
+func moveFile(fromPath string, toPath string) {
+	err := os.MkdirAll(filepath.Dir(toPath), os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = os.Rename(fromPath, toPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+// Удаление старых временных файлов, если они есть
+func cleanUp() {
+	files, err := filepath.Glob(filepath.Join(os.TempDir(), "soap4me*"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, f := range files {
+		err = os.Remove(f)
+		if err != nil {
+			log.Println(fmt.Printf("Can't remove old torrent file :: %s", f))
+		}
+	}
 }
