@@ -48,7 +48,7 @@ func doEpisode(episode Episode, wg *sync.WaitGroup) {
 
 	defer storageProvider.Close()
 
-	clientConfig := torrent.Config{
+	clientConfig := torrent.ClientConfig{
 		DataDir:  Config.TempDir,
 		NoUpload: true,
 		Seed:     false,

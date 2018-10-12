@@ -15,6 +15,10 @@ type ConfigStruct struct {
 	ShowsDir string `yaml:"shows_dir" cfg:"shows_dir"`
 	Debug    bool   `yaml:"debug" cfg:"debug" cfgDefault:"false"`
 	Threads  int    `yaml:"threads" cfg:"threads" cfgDefault:"1"`
+	UseRss   bool   `yaml:"use_rss" cfg:"use_rss" cfgDefault:"false"`
+	UseApi   bool   `yaml:"use_api" cfg:"use_api" cfgDefault:"false"`
+	Username string `yaml:"username" cfg:"username" cfgDefault:""`
+	Password string `yaml:"password" cfg:"password" cfgDefault:"false"`
 }
 
 var Config = ConfigStruct{}
@@ -41,10 +45,14 @@ func init() {
 // по хорошему это можно завернуть в loop и пусть демон всегда живет
 // но надо ли?
 func main() {
-	episodes := ParseFeed(Config.FeedUrl)
 
-	DownloadEpisodes(episodes)
+	if Config.UseRss {
+		var rssApi = Rss{Config.FeedUrl}
 
+		episodes := rssApi.ParseFeed()
+
+		DownloadEpisodes(episodes)
+	}
 }
 
 func createDir(path string) {

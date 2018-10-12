@@ -2,6 +2,13 @@ feed_url:
 tmp_dir:
 shows_dir:
 
+# использовать получение серий по rss ленте
+use_rss: false
+
+use_api: true
+username:
+password:
+
 #больше 3 ставить нет смысла
 threads: 1
 
