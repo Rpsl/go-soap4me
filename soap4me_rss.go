@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/mmcdole/gofeed"
 	"log"
 	"regexp"
+
+	"github.com/mmcdole/gofeed"
 )
 
 const UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"

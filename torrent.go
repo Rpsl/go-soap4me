@@ -2,10 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/anacrolix/torrent"
-	"github.com/anacrolix/torrent/metainfo"
-	"github.com/anacrolix/torrent/storage"
-	"github.com/dustin/go-humanize"
 	"io/ioutil"
 	"log"
 	"os"
@@ -13,6 +9,11 @@ import (
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/anacrolix/torrent"
+	"github.com/anacrolix/torrent/metainfo"
+	"github.com/anacrolix/torrent/storage"
+	"github.com/dustin/go-humanize"
 )
 
 // todo
@@ -49,9 +50,9 @@ func doEpisode(episode Episode, wg *sync.WaitGroup) {
 	defer storageProvider.Close()
 
 	clientConfig := torrent.ClientConfig{
-		DataDir:  Config.TempDir,
-		NoUpload: true,
-		Seed:     false,
+		DataDir:                 Config.TempDir,
+		NoUpload:                true,
+		Seed:                    false,
 		NoDefaultPortForwarding: true,
 		DefaultStorage:          storage.NewMMapWithCompletion(Config.TempDir, storageProvider),
 	}

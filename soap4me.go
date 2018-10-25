@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"net/http"
-	"time"
 	"io/ioutil"
 	"log"
+	"net/http"
+	"time"
 )
 
 type Episode struct {
