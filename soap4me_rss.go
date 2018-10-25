@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/mmcdole/gofeed"
 	"log"
 	"regexp"
+
+	"github.com/mmcdole/gofeed"
 )
 
 const UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"
@@ -28,7 +29,7 @@ func (rss Rss) ParseFeed() []Episode {
 func (rss Rss) parseItems(items *gofeed.Feed) []Episode {
 	var episodes []Episode
 
-	r, _ := regexp.Compile(`(.*?) / сезон ([0-9]+) эпизод ([0-9]+) / (.*?) / (.*)`)
+	r := regexp.MustCompile(`(.*?) / сезон ([0-9]+) эпизод ([0-9]+) / (.*?) / (.*)`)
 
 	for _, item := range items.Items {
 		match := r.FindStringSubmatch(item.Title)
