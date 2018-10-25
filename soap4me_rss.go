@@ -29,7 +29,7 @@ func (rss Rss) ParseFeed() []Episode {
 func (rss Rss) parseItems(items *gofeed.Feed) []Episode {
 	var episodes []Episode
 
-	r, _ := regexp.Compile(`(.*?) / сезон ([0-9]+) эпизод ([0-9]+) / (.*?) / (.*)`)
+	r := regexp.MustCompile(`(.*?) / сезон ([0-9]+) эпизод ([0-9]+) / (.*?) / (.*)`)
 
 	for _, item := range items.Items {
 		match := r.FindStringSubmatch(item.Title)

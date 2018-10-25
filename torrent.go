@@ -101,18 +101,16 @@ func runTorrent(client *torrent.Client, torrentFile string) *torrent.Torrent {
 	if Config.Debug {
 		go func() {
 			for {
-				select {
-				case <-t.GotInfo():
-					if t.BytesCompleted() == t.Info().TotalLength() {
-						continue
-					}
-					fmt.Printf(
-						"%s: %s/%s\n",
-						t.Files()[0].DisplayPath(),
-						humanize.Bytes(uint64(t.BytesCompleted())),
-						humanize.Bytes(uint64(t.Info().TotalLength())),
-					)
+				<-t.GotInfo()
+				if t.BytesCompleted() == t.Info().TotalLength() {
+					continue
 				}
+				fmt.Printf(
+					"%s: %s/%s\n",
+					t.Files()[0].DisplayPath(),
+					humanize.Bytes(uint64(t.BytesCompleted())),
+					humanize.Bytes(uint64(t.Info().TotalLength())),
+				)
 				time.Sleep(time.Second * 5)
 			}
 		}()
